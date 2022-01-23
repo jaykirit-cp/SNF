@@ -12,6 +12,8 @@ SNF (SayNoFeast) is a webapp that acts as a diabetes predictor. Features include
 ![image](https://user-images.githubusercontent.com/67377539/150680034-c8065d92-d9d2-4d9f-b95c-f6300492b0bf.png)
 ![image](https://user-images.githubusercontent.com/67377539/150680056-88eeb508-0d8f-4c3d-a02a-fca4f6d67070.png)
 ![image](https://user-images.githubusercontent.com/67377539/150679768-6d02b4e8-1b9d-4efd-a8f7-a47ac0bb64a3.png)
+![image](https://user-images.githubusercontent.com/67377539/150682139-f306b5ec-6a09-4eab-97af-1b5e2591aa9f.png)
+
 
 ## Project Structure
 
