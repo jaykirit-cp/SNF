@@ -2,178 +2,160 @@
 # Imports
 #----------------------------------------------------------------------------#
 
-from flask import Flask, render_template, request, Response,json
-from chatbot.chatbot import chatbot
-import chatbot.ml_model as mod
+from flask import Flask, render_template, request,redirect
+from flask import send_file, send_from_directory, safe_join, abort
+from flask.helpers import url_for
 
-import numpy as np
+from generate_report import *
 import os
+print(os.getcwd())
 
-# Open CV
-import cv2
-import cv2 as cv
-
-from pyunpack import Archive
-
-# Current Directory
-CURR_DIR = os.getcwd()
-
-# Unpacking Models
-Archive(os.path.join(CURR_DIR,"covid_detector//saved_models","saved_models.rar")).extractall(os.path.join(CURR_DIR,"covid_detector//saved_models"))
-
-## Covid Detector
-from covid_detector.Covid_Detect import Covid_Detect
-from covid_detector.Mask_Detect import Mask_Detect
+from sklearn.model_selection import train_test_split
 
 
-# Calling Covid Models
-mask_detect  = Mask_Detect()
-covid_detector = Covid_Detect()
-
-# Loading HaarCascadeClassifier
-font = cv.FONT_HERSHEY_COMPLEX
-haar_data = cv.CascadeClassifier('covid_detector//Haarcascades//haarcascade_frontalface_default.xml')
 
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
 app = Flask(__name__)
-camera=cv2.VideoCapture(0)
 app.config.from_object('config')
 
-
-@app.route('/',methods=['GET'])
-def home():
-    return render_template('pages/Covibuddy.html')
+#db = SQLAlchemy(app)
 
 
 
-#USER PAGE
-@app.route('/user',methods=['GET','POST'])
-def user():
-	return render_template('pages/chatbot.html')
+# Automatically tear down SQLAlchemy.
+'''
+@app.teardown_request
+def shutdown_session(exception=None):
+    db_session.remove()
+'''
 
-@app.route('/quiz_sol',methods=['POST','GET'])
-def quiz_sol():
-    record = [
-        request.form.get('fever'),
-        request.form.get('tiredness'),
-        request.form.get('dry_cough'),
-        request.form.get('breathing_d'),
-        request.form.get('sore_throat'),
-        request.form.get('none'),
-        request.form.get('body_pains'),
-        request.form.get('nasal_c'),
-        request.form.get('runny_nose'),
-        request.form.get('diarrhea'),
-        request.form.get('none'),
-        request.form.get('age_0_9'),
-        request.form.get('age_10_19'),
-        request.form.get('age_20_24'),
-        request.form.get('age_25_59'),
-        request.form.get('age_60'),
-        request.form.get('gender_female'),
-        request.form.get('gender_male'),
-        request.form.get('contact_not_sure'),
-        request.form.get('contact_yes'),
-        request.form.get('contact_no')
-    ] 
-
-    record = [int(rec) for rec in record]  
-
-    response=covid_detector.predict(record)
-    return json.dumps(response)
-
-@app.route('/quiz',methods=['POST','GET'])
-def quiz_page():
-    return(render_template('pages/Quizpage.html'))
-
-
-@app.route('/mask_detector')
-def mask_detector():
-    print("mask detector")
-    return render_template('pages/webcam.html')
-
-
-@app.route('/covid_api')
-def covid_api():
-    print("covid_api")
-    return render_template('pages/API.html')
-
-@app.route("/get")
-def get_bot_response():
-	model = mod.Mlmodel()
-	sympts_data = np.reshape(np.zeros(132),(1,132))
-	class_names = list(model.return_symp_names())
-	dis = ''
-	user = request.args.get('text')
-    
-	if(request.args.get('medi') == 'y'):
-		if(user in class_names):
-				sympts_data[0][class_names.index(user)] =1
-				dis = model.test_model(sympts_data)
-				return("You might have "+dis)
-
-		elif(user == ''):
-			return('Type something..')
-
-		else:
-			return("Sorry couldn't find")
-
-	elif(request.args.get('medi') == 'n'):
-		resp = str(chatbot.get_response(user))
-		if(resp == 'Do you feel?'):return '' 
-		return str(chatbot.get_response(user))
-
-	else:
-		return('I am sorry, but I do not understand. I am still learning.')
-
-
-
-
-def generate_frames():
-    while True:
-            
-        ## read the camera frame
-        success,frame=camera.read()
-        if not success:
-            break
+# Login required decorator.
+'''
+def login_required(test):
+    @wraps(test)
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return test(*args, **kwargs)
         else:
+            flash('You need to login first.')
+            return redirect(url_for('login'))
+    return wrap
+'''
+
+#----------------------------------------------------------------------------#
+# Controllers.
+#----------------------------------------------------------------------------#
+
+
+@app.route('/',methods=['GET','POST'])
+def home():
+    return render_template('pages/SNF.html')
+
+
+@app.route('/download', methods=['GET', 'POST'])
+def download():
+    global user_details
+    if(request.method == 'POST'):
+        print("Test")
+        user_details= {
+            "Name":request.form.get("name"),
+            "Gender":request.form.get("gender"),
+            "Age":request.form.get("age"),
+            "Pregnancies":request.form.get("pregnancies"),
+            "Glucose":request.form.get("glucose"),
+            "Bloodpressure":request.form.get("bloodpressure"),
+            "Skinthickness":request.form.get("skinthickness"),
+            "Insulin":request.form.get("insulin"),
+            "BMI":request.form.get('bmi'),
+            "Diabetes Pedigree Function":request.form.get('dpf'),
+            "Email Address":request.form.get('email')
+
+            #"Gender":request.form.get("gender"),
+            #"Diagnosis":request.form.get("Diagnosis"),
+            #"Analysis":request.form.get("disease"),
+            #"Image":""
             
-            faces = haar_data.detectMultiScale(frame)
-            for x,y,w,h in faces[:1]:
-                if(w>200 or h>200):
-                    
-                    face = frame[y:y+h, x:x+w, :]
-                    face = cv.resize(face, (50,50))
-                    face = face.reshape(1,-1)
-                    
-                    response = mask_detect.detect_mask(face)["response"]
-                    cv.putText(frame,response["result"], (x,y), font, 1, (244,250,250), 2)
-                    cv.rectangle(frame, (x,y), (x+w, y+h),response["color_code"], 4)
-            cv.imshow('Result', frame)
+        }
+        print(user_details)
+        report = Report()
+        report.generate_report(user_details) #Added change here
+
+        return redirect('/')
+    return redirect('/')
+
+    #return send_from_directory(directory="./reports", filename="report.pdf")
+
+#IMAGE INPUT
+
+#@app.route("/analyze_img",methods=['POST','GET'])
+#def analyze_img():
+
+    #if(request.method  == 'POST'):    
+        #if(request.files):
+            #report.refresh()
+            #img = request.files['image']
+            #img.save(os.path.join("./static/images",img.filename))
+            #user_details['Image'] = img.filename
+            #print(user_details)
+            #report.generate_report(user_details)
+            #test_img = cv2.imread(os.path.join(app.config['IMAGE_UPLOADS'], img.filename))
+
+    #return redirect('user')
 
 
-            ret,buffer=cv2.imencode('.jpg',frame)
-            frame=buffer.tobytes()
-
-        yield(b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+@app.route('/about')
+def about():
+    return render_template('pages/placeholder.about.html')
 
 
-@app.route('/video')
-def video():
-    print("video")
-    return Response(generate_frames(),mimetype='multipart/x-mixed-replace; boundary=frame')
+# @app.route('/login')
+# def login():
+#     form = LoginForm(request.form)
+#     return render_template('forms/login.html', form=form)
 
 
+# @app.route('/register')
+# def register():
+#     form = RegisterForm(request.form)
+#     return render_template('forms/register.html', form=form)
+
+
+# @app.route('/forgot')
+# def forgot():
+#     form = ForgotForm(request.form)
+#     return render_template('forms/forgot.html', form=form)
+
+
+# Error handlers.
+
+# @app.errorhandler(500)
+# def internal_error(error):
+#     #db_session.rollback()
+#     return render_template('errors/500.html'), 500
+
+
+# @app.errorhandler(404)
+# def not_found_error(error):
+#     return render_template('errors/404.html'), 404
+
+# if not app.debug:
+#     file_handler = FileHandler('error.log')
+#     file_handler.setFormatter(
+#         Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+#     )
+#     app.logger.setLevel(logging.INFO)
+#     file_handler.setLevel(logging.INFO)
+#     app.logger.addHandler(file_handler)
+#     app.logger.info('errors')
 
 #----------------------------------------------------------------------------#
 # Launch.
 #----------------------------------------------------------------------------#
 
-# Default port:
+# Default port -  PORT:3000:
 if __name__ == '__main__':
-    app.run(debug=True)
-    camera=cv2.VideoCapture(0)
+    app.run()
+    
