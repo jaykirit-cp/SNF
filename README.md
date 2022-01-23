@@ -35,3 +35,6 @@ SNF (SayNoFeast) is a webapp that acts as a diabetes predictor. Features include
 └── templates
     ├── SNF.html
     └── index.pug
+
+
+The HTML page is located in SNF.html in templates. The css files are located in static. style1.css is the main css file along with the other templates. snf.py is the backend ml model code and app.py is the page contatining the flask code. 
