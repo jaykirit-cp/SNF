@@ -10,16 +10,7 @@ class SNF_Detect:
     model_dir        = "./Model/savedmodel.pkl"
 
 
-    # Change Response Text
-    
-    response_text = {
-        'Severity_Mild':"Your are affected by Covid mildly.",
-        'Severity_Moderate': "You are affected by Covid Moderately",
-        'Severity_Severe':"You are affected by Covid Severely",
-        'Severity_None':"You are safe from Covid",
-        'Other_Severity':"You have been affected from other Disease apart from Covid "
-    }
-    
+    # Change Response Text 
     def __init__(self):
         
         self.clf = joblib.load(self.model_dir)
